@@ -1,29 +1,22 @@
-# Stage 1: Build the Go binary
-FROM golang:alpine AS builder
-
-# Set the Current Working Directory inside the container
-WORKDIR /app
-
-# Copy the source from the current directory to the Working Directory inside the container
-COPY . .
-
-# Build the Go app
-RUN cd examples/base && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o base
-
-# Stage 2: Create a minimal runtime image
 FROM alpine:latest
 
-# Set the Current Working Directory inside the container
-WORKDIR /root/
+ARG PB_VERSION=0.22.12
 
-# Copy the Pre-built binary file from the previous stage
-COPY --from=builder /app/examples/base/base .
+RUN apk add --no-cache \
+    unzip \
+    ca-certificates
 
-# Ensure the binary has execute permissions
-RUN chmod +x base
+# download and unzip PocketBase
+ADD https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip /tmp/pb.zip
+RUN unzip /tmp/pb.zip -d /pb/
 
-# Expose the necessary port (change if needed)
-EXPOSE 8090
+# uncomment to copy the local pb_migrations dir into the image
+# COPY ./pb_migrations /pb/pb_migrations
 
-# Command to run the executable
-CMD ["./base", "serve"]
+# uncomment to copy the local pb_hooks dir into the image
+# COPY ./pb_hooks /pb/pb_hooks
+
+EXPOSE 8080
+
+# start PocketBase
+CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8080"]
